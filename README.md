@@ -1,36 +1,41 @@
-# TraceForge Remaster v0.1
+# TraceForge v2
 
-Evidence-led public-source research PWA by McLain Systems.
+TraceForge is an evidence-first public-source investigation workspace by McLain Systems.
 
-## Run locally
+## What it does
 
-Any static server works:
+Start with one identifier and route it only to applicable public sources:
 
-```bash
-python3 -m http.server 8080
-```
+- **Username:** GitHub + GitLab exact-handle checks
+- **Email / domain:** public DNS plus RDAP domain-registration context
+- **IP address:** RIPEstat routing / ASN context plus RDAP allocation context
+- **Phone:** normalization only until a vetted ownership provider is configured
+- **Breach coverage:** intentionally not claimed until a server-side provider is configured
 
-Open `http://localhost:8080` from this directory.
+Each fetched finding keeps a provider, source URL, check time, observation, and limitation. Provider failures and unavailable coverage remain visible instead of being converted into conclusions.
 
-## Current live-capable adapters
+## Cases
 
-- GitHub public user API for exact handles
-- Cloudflare DNS JSON DoH with Google Public DNS JSON fallback
-- RIPEstat network-info for IPs
+Search sessions are ephemeral by default. Selected findings can be saved into local cases with:
 
-HIBP and phone ownership are intentionally shown as unconfigured. No secrets are stored client-side.
+- evidence ledger
+- entities and human-reviewed relationships
+- historical timeline
+- questions, tasks, and contradictions
+- JSON import/export
+- printable citation-bearing report
 
-## Persistence
+Cases are stored in browser localStorage and labeled as device-local.
 
-Searches are ephemeral. Cases are only written to browser localStorage after explicit create/save actions. The UI labels this as “Saved on this device · not cloud synced.”
+## Product principles
 
-## Import / export
+1. Source on every fetched finding.
+2. A matching identifier is not automatically an identity match.
+3. Shared identifiers never auto-merge people or entities.
+4. Missing coverage is shown as missing.
+5. Registry/network context is not person attribution or precise geolocation.
+6. No credential dumps, session tokens, stealer logs, or covert tracking.
 
-- Case JSON has `schemaVersion: 1`
-- Evidence imports: text, `.txt`, `.json`, `.csv`
-- Malformed imports are rejected before mutating saved case state
-- Browser print creates a citation-bearing report
+## Deployment
 
-## Safety boundaries
-
-TraceForge does not implement credential dumps, stealer logs, session tokens, private-address dossiers, covert tracking, or automatic identity merging.
+The repository is a static PWA deployed on Vercel. No API secrets are shipped client-side. Providers that require protected credentials must be implemented server-side before they can be enabled.
