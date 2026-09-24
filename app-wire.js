@@ -3,6 +3,8 @@ function wire(){
   document.querySelector('[data-clear-session]')?.addEventListener('click',clearSession);
   const input=document.querySelector('#searchInput'); if(input){ input.addEventListener('input',e=>{state.query=e.target.value; state.queryMeta=detectIdentifier(state.query); if(state.activeController)state.activeController.abort();state.providers={};state.selectedFindingIds.clear();render(); setTimeout(()=>document.querySelector('#searchInput')?.focus(),0);}); input.addEventListener('keydown',e=>{if(e.key==='Enter')runSearch(e.currentTarget.value)}); document.querySelector('#searchBtn')?.addEventListener('click',()=>runSearch(document.querySelector('#searchInput').value)); }
   document.querySelectorAll('[data-finding-check]').forEach(x=>x.onchange=()=>{x.checked?state.selectedFindingIds.add(x.dataset.findingCheck):state.selectedFindingIds.delete(x.dataset.findingCheck);});
+  document.querySelectorAll('[data-example]').forEach(b=>b.onclick=()=>{const value=b.dataset.example||'';state.query=value;state.queryMeta=detectIdentifier(value);render();setTimeout(()=>runSearch(value),0);});
+  document.querySelector('[data-select-all]')?.addEventListener('click',()=>{const ids=allFindings().map(f=>f.id);const all=ids.length&&ids.every(id=>state.selectedFindingIds.has(id));ids.forEach(id=>all?state.selectedFindingIds.delete(id):state.selectedFindingIds.add(id));render();});
   document.querySelectorAll('[data-retry]').forEach(b=>b.onclick=()=>retryProvider(b.dataset.retry));
   document.querySelector('[data-save-selected]')?.addEventListener('click',saveSelectedFindings);
   document.querySelector('[data-new-case]')?.addEventListener('click',()=>{const n=prompt('Case name','New investigation');if(n)createCase(n)});
