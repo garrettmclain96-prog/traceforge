@@ -1,0 +1,23 @@
+function render(){
+  const app=document.querySelector('#app');
+  app.innerHTML=`<div class="shell">${sidebar()}<main class="main">${topbar()}${content()}</main>${mobileNav()}</div>${modalHtml()}`;
+  wire();
+}
+function navButton(id,label,icon){return `<button data-nav="${id}" class="${state.view===id?'active':''}"><span>${icon}</span><span>${label}</span></button>`;}
+function sidebar(){return `<aside class="sidebar"><div class="brand"><div class="brand-mark">TF</div><div><strong>TraceForge</strong><small>McLain Systems</small></div></div><nav class="nav">${navButton('investigate','Investigate','⌕')}${navButton('cases','Cases','▣')}${navButton('sources','Sources','◎')}</nav><div class="sidebar-note">Public-source evidence workspace.<br>Searches are ephemeral unless you explicitly save evidence to a case.</div></aside>`;}
+function mobileNav(){return `<nav class="mobile-nav">${navButton('investigate','Investigate','⌕')}${navButton('cases','Cases','▣')}${navButton('sources','Sources','◎')}</nav>`;}
+function topbar(){ const titles={investigate:['Investigate','Search public sources without creating a dossier by default.'],cases:['Cases','Human-reviewed evidence, relationships, timeline and open questions.'],sources:['Sources','Provider coverage, limitations and current configuration.']}; const [t,s]=titles[state.view]||titles.investigate;return `<header class="topbar"><div><div class="eyebrow">TraceForge · evidence-led OSINT</div><h1>${t}</h1><p class="muted">${s}</p></div><div class="actions no-print"><button class="btn ghost" data-clear-session>Clear session</button></div></header>`; }
+function content(){if(state.view==='cases')return casesView();if(state.view==='sources')return sourcesView();return investigateView();}
+
+function investigateView(){
+  const meta=state.queryMeta;
+  const pEntries=Object.values(state.providers);
+  return `<section class="section"><div class="card"><div class="search-row"><input id="searchInput" class="search" value="${esc(state.query)}" placeholder="email, username, domain, IP, or phone" autocomplete="off" spellcheck="false"><button class="btn primary" id="searchBtn">Run public-source checks</button></div>${meta?`<div style="margin-top:10px"><span class="badge ${meta.valid?'teal':'error'}">${esc(meta.label)}</span>${meta.valid?` <span class="small muted">Normalized: ${esc(meta.normalized)}</span>`:''}</div>`:''}<p class="small muted" style="margin-bottom:0">Queries are sent directly to the named public providers. Nothing is saved unless you choose evidence and save it to a case.</p></div></section>
+  ${pEntries.length?`<section class="section"><div class="section-head"><div><h2>Provider checks</h2><p class="muted small">Each source succeeds or fails independently. A miss is not a safety conclusion.</p></div>${allFindings().length?`<button class="btn primary" data-save-selected>Save selected to case</button>`:''}</div><div class="provider-list">${pEntries.map(providerHtml).join('')}</div></section>`:`<section class="section"><div class="empty"><strong>Start with an identifier.</strong><br><span class="small">Try <code>github</code>, <code>example.com</code>, or <code>1.1.1.1</code>.</span></div></section>`}`;
+}
+function statusBadge(p){const m={loading:['teal','Checking…'],success:['ok','Fetched'],['no-match']:['warn','No match'],error:['error','Error'],timeout:['error','Timeout'],unsupported:['warn','Unconfigured'],idle:['','Ready']};const [c,l]=m[p.status]||['',p.status];return `<span class="badge ${c}"><span class="status-dot"></span>${l}</span>`;}
+function providerHtml(p){
+  return `<article class="provider"><div class="provider-head"><div class="provider-title"><h3>${esc(p.name)}</h3>${statusBadge(p)}</div>${['error','timeout','no-match'].includes(p.status)&&['github','dns','ripe'].includes(p.id)?`<button class="btn small ghost" data-retry="${p.id}">Retry</button>`:''}</div>${p.note?`<div class="notice warn">${esc(p.note)}</div>`:''}${p.error?`<div class="notice danger">${esc(p.error)}</div>`:''}${p.status==='no-match'?`<div class="notice">No matching result was returned by this provider. This does not prove the identifier is unused elsewhere.</div>`:''}${p.findings?.length?p.findings.map(findingHtml).join(''):''}</article>`;
+}
+function findingHtml(f){return `<div class="checkline"><input type="checkbox" data-finding-check="${f.id}" ${state.selectedFindingIds.has(f.id)?'checked':''}><div class="finding"><p>${esc(f.observation)}</p><div class="finding-meta"><span>${esc(f.provider)}</span><span>${esc(fmtDate(f.checkedAt))}</span><a href="${esc(f.url)}" target="_blank" rel="noopener">Source ↗</a></div><div class="small muted">Limitation: ${esc(f.limitation)}</div></div></div>`;}
+
