@@ -74,25 +74,98 @@ async function runRipe(meta,signal){
   render();
 }
 
+async function runGitlab(meta,signal){
+  const p=providerState('gitlab','GitLab','loading'); state.providers.gitlab=p; render();
+  try{
+    const url=`https://gitlab.com/api/v4/users?username=${encodeURIComponent(meta.normalized)}`;
+    const data=await fetchJson(url,{},signal);
+    const arr=Array.isArray(data)?data:[];
+    const user=arr.find(x=>String(x.username||'').toLowerCase()===meta.normalized.toLowerCase());
+    if(!user){p.status='no-match';}
+    else{
+      p.status='success';
+      p.findings=[finding('GitLab',meta.normalized,
+        `Exact public handle exists. Account state: ${user.state||'unknown'}${user.name?`; display name: ${user.name}`:''}.`,
+        user.web_url||`https://gitlab.com/${encodeURIComponent(meta.normalized)}`,
+        'GitLab public profile metadata only. A matching handle does not prove identity or ownership.',
+        {sourceType:'api',raw:{id:user.id,username:user.username,name:user.name,state:user.state,web_url:user.web_url}}
+      )];
+    }
+  }catch(e){if(signal.aborted)return;p.status=e.name==='TimeoutError'?'timeout':'error';p.error=e.message;}
+  render();
+}
+
+async function runRdapDomain(meta,signal){
+  const domain=meta.domain||meta.normalized;
+  const p=providerState('rdap','RDAP domain','loading'); state.providers.rdap=p; render();
+  try{
+    const url=`https://rdap.org/domain/${encodeURIComponent(domain)}`;
+    const d=await fetchJson(url,{},signal);
+    const events=Array.isArray(d?.events)?d.events:[];
+    const reg=events.find(e=>e.eventAction==='registration')?.eventDate;
+    const exp=events.find(e=>e.eventAction==='expiration')?.eventDate;
+    const bits=[d?.ldhName||domain];
+    if(Array.isArray(d?.status)&&d.status.length) bits.push(`status ${d.status.join(', ')}`);
+    if(reg) bits.push(`registered ${reg}`);
+    if(exp) bits.push(`expires ${exp}`);
+    p.status='success';
+    p.findings=[finding('RDAP',domain,`Registration context: ${bits.join('; ')}.`,url,'Registry data describes the domain registration, not a specific person behind an email address.',{sourceType:'api'})];
+  }catch(e){if(signal.aborted)return;p.status=e.status===404?'no-match':(e.name==='TimeoutError'?'timeout':'error');p.error=e.message;}
+  render();
+}
+
+async function runRdapIp(meta,signal){
+  const p=providerState('rdapip','RDAP IP','loading'); state.providers.rdapip=p; render();
+  try{
+    const url=`https://rdap.org/ip/${encodeURIComponent(meta.normalized)}`;
+    const d=await fetchJson(url,{},signal);
+    const bits=[];
+    if(d?.name) bits.push(d.name);
+    if(d?.handle) bits.push(`handle ${d.handle}`);
+    if(d?.startAddress&&d?.endAddress) bits.push(`${d.startAddress} – ${d.endAddress}`);
+    if(d?.country) bits.push(`country code ${d.country}`);
+    p.status=bits.length?'success':'no-match';
+    if(bits.length) p.findings=[finding('RDAP',meta.normalized,`IP registry context: ${bits.join('; ')}.`,url,'Registry allocation data identifies address-block administration, not a person or precise device location.',{sourceType:'api'})];
+  }catch(e){if(signal.aborted)return;p.status=e.status===404?'no-match':(e.name==='TimeoutError'?'timeout':'error');p.error=e.message;}
+  render();
+}
+
 async function runSearch(raw){
   if(state.activeController) state.activeController.abort();
   state.providers={}; state.selectedFindingIds.clear();
   state.query=raw.trim(); state.queryMeta=detectIdentifier(raw);
   const meta=state.queryMeta;
-  if(!meta.valid){ render(); if(raw.trim()) toast('That identifier format is not recognized.',true); return; }
+  if(!meta.valid){render();if(raw.trim())toast('That identifier format is not recognized.',true);return;}
   state.activeController=new AbortController(); const sig=state.activeController.signal;
-  if(meta.type==='username') state.providers.github=providerState('github','GitHub','idle');
-  if(meta.type==='domain'||meta.type==='email') state.providers.dns=providerState('dns','DNS','idle');
-  if(meta.type==='ip') state.providers.ripe=providerState('ripe','RIPEstat','idle');
-  state.providers.hibp=providerState('hibp','Have I Been Pwned','unsupported',{note:'Server-side key/provider not configured. No breach conclusion is made.'});
-  state.providers.phone=providerState('phone','Phone ownership','unsupported',{note:'Provider not configured. Number is only normalized; no ownership conclusion is made.'});
+  if(meta.type==='username'){
+    state.providers.github=providerState('github','GitHub','idle');
+    state.providers.gitlab=providerState('gitlab','GitLab','idle');
+  }
+  if(meta.type==='domain'||meta.type==='email'){
+    state.providers.dns=providerState('dns','DNS','idle');
+    state.providers.rdap=providerState('rdap','RDAP domain','idle');
+    if(meta.type==='email') state.providers.hibp=providerState('hibp','Breach coverage','unsupported',{note:'Breach-provider access is not configured in this client build. No breach conclusion is made.'});
+  }
+  if(meta.type==='ip'){
+    state.providers.ripe=providerState('ripe','RIPEstat','idle');
+    state.providers.rdapip=providerState('rdapip','RDAP IP','idle');
+  }
+  if(meta.type==='phone') state.providers.phone=providerState('phone','Phone ownership','unsupported',{note:'Owner lookup is intentionally unavailable until a vetted provider is configured. The number is normalized only.'});
   render();
   const jobs=[];
-  if(meta.type==='username') jobs.push(runGithub(meta,sig));
-  if(meta.type==='domain'||meta.type==='email') jobs.push(runDns(meta,sig));
-  if(meta.type==='ip') jobs.push(runRipe(meta,sig));
-  if(meta.type==='phone') toast('Phone lookup provider is not configured; formatting only.');
+  if(meta.type==='username'){jobs.push(runGithub(meta,sig),runGitlab(meta,sig));}
+  if(meta.type==='domain'||meta.type==='email'){jobs.push(runDns(meta,sig),runRdapDomain(meta,sig));}
+  if(meta.type==='ip'){jobs.push(runRipe(meta,sig),runRdapIp(meta,sig));}
+  if(meta.type==='phone') toast('Phone lookup is not configured; formatting only.');
   await Promise.allSettled(jobs);
 }
-function retryProvider(id){ const m=state.queryMeta; if(!m?.valid) return; const sig=state.activeController?.signal || new AbortController().signal; if(id==='github') runGithub(m,sig); if(id==='dns') runDns(m,sig); if(id==='ripe') runRipe(m,sig); }
-
+function retryProvider(id){
+  const m=state.queryMeta;if(!m?.valid)return;
+  const sig=state.activeController?.signal||new AbortController().signal;
+  if(id==='github')runGithub(m,sig);
+  if(id==='gitlab')runGitlab(m,sig);
+  if(id==='dns')runDns(m,sig);
+  if(id==='rdap')runRdapDomain(m,sig);
+  if(id==='ripe')runRipe(m,sig);
+  if(id==='rdapip')runRdapIp(m,sig);
+}
