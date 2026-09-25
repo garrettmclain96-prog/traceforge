@@ -18,16 +18,29 @@ function parseSettlements(html){
   }
   return out;
 }
+
+function parseLawsuits(html){
+  const out=[];const re=/<h3[^>]*>\s*<a[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>\s*<\/h3>([\s\S]*?)(?=<h3\b|<h2\b|$)/gi;let m;
+  while((m=re.exec(html))&&out.length<100){
+    const title=stripTags(m[2]);const summary=stripTags(m[3]).replace(/\s+(Take Me There|Additional Investigations).*$/i,'').trim();
+    if(!title||!summary||/^(More|Take Me There)$/i.test(title))continue;
+    const url=safeUrl(m[1]);if(!url)continue;
+    out.push({title,summary:summary.slice(0,650),url});
+  }
+  return out;
+}
+
 module.exports=async function handler(req,res){
   res.setHeader('Cache-Control','s-maxage=1800, stale-while-revalidate=43200');
   const kind=String(req.query?.kind||'');
-  if(kind!=='classactions')return res.status(400).json({error:'Unsupported recovery feed.'});
+  if(!['classactions','lawsuits'].includes(kind))return res.status(400).json({error:'Unsupported recovery feed.'});
   try{
-    const upstream=await fetch('https://www.classaction.org/settlements',{headers:{'user-agent':'TraceForge/3.0 (+https://traceforge-pink.vercel.app)','accept':'text/html'}});
+    const source=kind==='lawsuits'?'https://www.classaction.org/list-of-lawsuits':'https://www.classaction.org/settlements';
+    const upstream=await fetch(source,{headers:{'user-agent':'TraceForge/3.0 (+https://traceforge-pink.vercel.app)','accept':'text/html'}});
     if(!upstream.ok)throw new Error(`Upstream ${upstream.status}`);
-    let items=parseSettlements(await upstream.text());
+    let items=kind==='lawsuits'?parseLawsuits(await upstream.text()):parseSettlements(await upstream.text());
     const q=String(req.query?.q||'').trim().toLowerCase().slice(0,100);
-    if(q)items=items.filter(x=>`${x.title} ${x.eligibility}`.toLowerCase().includes(q));
-    res.status(200).json({source:'https://www.classaction.org/settlements',fetchedAt:new Date().toISOString(),query:q||null,count:items.length,items:items.slice(0,18)});
-  }catch(e){res.status(502).json({error:'Could not refresh class-action settlements.',detail:String(e?.message||e)});}
+    if(q)items=items.filter(x=>`${x.title} ${x.summary||''} ${x.eligibility||''}`.toLowerCase().includes(q));
+    res.status(200).json({source,fetchedAt:new Date().toISOString(),query:q||null,count:items.length,items:items.slice(0,18)});
+  }catch(e){res.status(502).json({error:`Could not refresh class-action ${kind==='lawsuits'?'lawsuits':'settlements'}.`,detail:String(e?.message||e)});}
 };
