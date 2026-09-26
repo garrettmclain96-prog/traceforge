@@ -173,6 +173,7 @@ async function runSearch(raw){
   state.query=raw.trim(); state.queryMeta=detectIdentifier(raw);
   const meta=state.queryMeta;
   if(!meta.valid){render();if(raw.trim())toast('That input format is not recognized.',true);return;}
+  if(meta.type==='keyword'&&meta.forcedLane)state.researchLane=meta.forcedLane;
   state.activeController=new AbortController(); const sig=state.activeController.signal;
   if(meta.type==='username'){
     state.providers.github=providerState('github','GitHub','idle');
