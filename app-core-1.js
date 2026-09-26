@@ -64,6 +64,15 @@ function detectIdentifier(raw){
   const original=String(raw||'').trim();
   if(!original) return {type:'empty',normalized:'',valid:false,label:'Empty'};
 
+  const forced=/^(person|company|org|organization|topic|keyword)\s*:\s*(.+)$/i.exec(original);
+  if(forced){
+    const lane=forced[1].toLowerCase();
+    const normalized=forced[2].replace(/\s+/g,' ').trim();
+    if(!normalized)return {type:'unknown',normalized:original,valid:false,label:'Empty research subject'};
+    const forcedLane=lane==='org'||lane==='organization'?'organization':lane==='topic'||lane==='keyword'?'auto':lane;
+    return {type:'keyword',normalized,valid:true,forcedLane,label:`Research subject · ${forcedLane==='auto'?'general':forcedLane}`};
+  }
+
   if(/^https?:\/\//i.test(original)){
     try{
       const u=new URL(original);
