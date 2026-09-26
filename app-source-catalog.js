@@ -486,16 +486,97 @@ function suggestedCatalogSources(){
   if(picked.length) return picked.slice(0,6);
   return SOURCE_CATALOG.filter(s=>s.inputs.includes(input) && s.mode!=='integrated').slice(0,6);
 }
+function researchLaneHtml(){
+  if(state.queryMeta?.type!=='keyword') return '';
+  const lanes=[['auto','General'],['person','Person'],['company','Company'],['organization','Organization']];
+  return `<section class="section"><div class="card lane-card"><div><div class="eyebrow">RESEARCH LANE</div><h3>What kind of subject is this?</h3><p class="small muted">This changes source routing only. It does not classify the subject or infer identity.</p></div><div class="lane-options">${lanes.map(([id,label])=>`<button class="search-example ${state.researchLane===id?'active':''}" data-research-lane="${id}">${label}</button>`).join('')}</div></div></section>`;
+}
+function investigationPlanHtml(){
+  const meta=state.queryMeta;
+  if(!meta?.valid) return '';
+  const input=catalogInputForCurrentQuery()||meta.type;
+  const plans={
+    username:[
+      ['1','Confirm','Check exact-handle sources and keep account metadata separate from identity claims.'],
+      ['2','Expand','Run broader username discovery for candidate accounts.'],
+      ['3','Corroborate','Compare independent profile details before linking accounts to the same entity.'],
+      ['4','Preserve','Save only reviewed source-backed lines to a case.']
+    ],
+    domain:[
+      ['1','Current state','Capture DNS and RDAP registry context.'],
+      ['2','History','Review certificate-transparency names and web-archive coverage.'],
+      ['3','Expand','Pivot into subdomain, exposure, and historical DNS sources when justified.'],
+      ['4','Preserve','Save the exact findings and source limitations into the case ledger.']
+    ],
+    url:[
+      ['1','Scope','Keep the exact URL and its hostname distinct.'],
+      ['2','History','Inspect hostname history and page-specific archive captures.'],
+      ['3','Triage','Use URL reputation or scan context only as signals, not verdicts.'],
+      ['4','Preserve','Archive or cite important public pages before they change.']
+    ],
+    ip:[
+      ['1','Registry','Establish allocation and routing context.'],
+      ['2','Exposure','Check scoped public-internet service context where authorized.'],
+      ['3','Corroborate','Do not turn network allocation into person or device attribution.'],
+      ['4','Preserve','Save time-stamped source lines and limitations.']
+    ],
+    hash:[
+      ['1','Identify','Keep the hash type and exact value intact.'],
+      ['2','Reputation','Check multi-engine and threat-intelligence sources.'],
+      ['3','Corroborate','Review vendor disagreement and sample context before conclusions.'],
+      ['4','Preserve','Save the source, check time, and exact detection context.']
+    ],
+    email:[
+      ['1','Domain','Establish mail-routing and registry context without claiming mailbox existence.'],
+      ['2','Public pivots','Use vetted enrichment tools only as leads.'],
+      ['3','Corroborate','Require an independent source before linking the address to a person.'],
+      ['4','Preserve','Save only reviewed public evidence.']
+    ],
+    phone:[
+      ['1','Normalize','Keep a consistent number format.'],
+      ['2','Public pivots','Use vetted public enrichment sources rather than automatic owner claims.'],
+      ['3','Corroborate','Require independent public evidence for identity.'],
+      ['4','Preserve','Document source and limitation.']
+    ],
+    person:[
+      ['1','Disambiguate','Separate same-name people with geography, organization, date, or another independent attribute.'],
+      ['2','Primary records','Prefer official filings, courts, registries, and first-party pages.'],
+      ['3','Relationships','Treat network links as hypotheses until the underlying records support them.'],
+      ['4','Preserve','Build a source-backed case rather than a profile assembled from assumptions.']
+    ],
+    company:[
+      ['1','Registry','Establish the legal entity and jurisdiction.'],
+      ['2','Filings','Review official filings, officers, and public financial records where applicable.'],
+      ['3','Footprint','Expand into domains, archives, litigation, and related entities.'],
+      ['4','Preserve','Keep primary sources and historical snapshots in the case ledger.']
+    ],
+    organization:[
+      ['1','Identity','Establish the organization’s exact legal/public identity.'],
+      ['2','Filings','Check nonprofit, corporate, regulatory, or court records that fit the entity.'],
+      ['3','Network','Map documented officers, domains, and related entities without auto-merging names.'],
+      ['4','Preserve','Save provenance and unresolved questions.']
+    ],
+    keyword:[
+      ['1','Define','Turn the broad subject into testable questions and named entities.'],
+      ['2','Discover','Use curated public-source directories to find the right primary sources.'],
+      ['3','Verify','Cross-check important claims with independent evidence.'],
+      ['4','Preserve','Save reviewed evidence and open contradictions in a case.']
+    ]
+  };
+  const rows=plans[input]||plans.keyword;
+  return `<section class="section"><div class="section-head"><div><div class="eyebrow">INVESTIGATION PLAYBOOK</div><h2>Do the next useful thing, not every possible thing.</h2><p class="small muted">Deterministic workflow guidance for this input type.</p></div></div><div class="playbook-grid">${rows.map(r=>`<div class="playbook-step"><span>${r[0]}</span><div><strong>${esc(r[1])}</strong><p>${esc(r[2])}</p></div></div>`).join('')}</div></section>`;
+}
 const __traceforgeInvestigateViewWithCatalogBase = investigateView;
-investigateView=function(){
+investigateView=function (){
   const base=__traceforgeInvestigateViewWithCatalogBase();
   const meta=state.queryMeta;
   if(!meta?.valid) return base;
   const suggestions=suggestedCatalogSources();
-  if(!suggestions.length) return base + `<section class="section"><div class="card inset"><strong>No additional automated pivot configured for ${esc(meta.label)}.</strong><p class="small muted" style="margin-bottom:0">TraceForge keeps unsupported coverage visible rather than substituting an unrelated lookup.</p></div></section>`;
-  return base + `<section class="section"><div class="section-head"><div><div class="eyebrow">NEXT PIVOTS</div><h2>Useful follow-on sources for this identifier</h2><p class="small muted">These are recommendations, not findings. Nothing becomes evidence until you review it and save provenance.</p></div><button class="btn small ghost" data-nav="sources">Open full catalog</button></div><div class="catalog-grid compact-grid">${suggestions.map(s=>catalogCard(s,true)).join('')}</div></section>`;
+  const pivots=suggestions.length
+    ? `<section class="section"><div class="section-head"><div><div class="eyebrow">NEXT PIVOTS</div><h2>Useful follow-on sources</h2><p class="small muted">Recommendations are not findings. Review the source before preserving anything as evidence.</p></div><button class="btn small ghost" data-nav="sources">Open full catalog</button></div><div class="catalog-grid compact-grid">${suggestions.map(s=>catalogCard(s,true)).join('')}</div></section>`
+    : `<section class="section"><div class="card inset"><strong>No additional pivot configured for ${esc(meta.label)}.</strong><p class="small muted" style="margin-bottom:0">Unsupported coverage stays visible rather than being replaced with an unrelated lookup.</p></div></section>`;
+  return base + researchLaneHtml() + investigationPlanHtml() + pivots;
 };
-
 function sourcesView(){
   const q=state.sourceCatalogQuery||'';
   const filter=state.sourceCatalogFilter||'all';
