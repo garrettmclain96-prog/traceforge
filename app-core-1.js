@@ -1,7 +1,8 @@
+const APP_VERSION = '4.0.0';
 const APP_KEY = 'traceforge.v1.cases';
 const SCHEMA_VERSION = 1;
 const MAX_IMPORT_BYTES = 1_000_000;
-const REQUEST_TIMEOUT = 9000;
+const REQUEST_TIMEOUT = 12000;
 
 const state = {
   view: 'investigate',
@@ -10,6 +11,7 @@ const state = {
   currentCaseId: localStorage.getItem('traceforge.currentCaseId') || null,
   query: '',
   queryMeta: null,
+  researchLane: 'auto',
   providers: {},
   selectedFindingIds: new Set(),
   activeController: null,
@@ -55,22 +57,48 @@ function toast(msg,error=false){
   const t=document.createElement('div'); t.className=`toast${error?' error':''}`; t.textContent=msg; wrap.append(t); setTimeout(()=>t.remove(),4200);
 }
 
+function isDomain(value){
+  return /^(?=.{3,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i.test(value);
+}
 function detectIdentifier(raw){
-  let value=raw.trim();
-  if(!value) return {type:'empty',normalized:'',valid:false,label:'Empty'};
-  if(/^https?:\/\//i.test(value)) { try { const u=new URL(value); value=u.hostname; } catch {} }
-  const email=/^[^\s@]+@([^\s@]+\.[^\s@]+)$/.exec(value);
-  if(email) return {type:'email',normalized:value.toLowerCase(),domain:email[1].toLowerCase(),valid:true,label:'Email · domain checks only'};
+  const original=String(raw||'').trim();
+  if(!original) return {type:'empty',normalized:'',valid:false,label:'Empty'};
+
+  if(/^https?:\/\//i.test(original)){
+    try{
+      const u=new URL(original);
+      const domain=u.hostname.toLowerCase().replace(/^www\./,'');
+      if(!isDomain(domain) && !/^\d{1,3}(?:\.\d{1,3}){3}$/.test(domain)) return {type:'unknown',normalized:original,valid:false,label:'Invalid URL'};
+      u.hash='';
+      return {type:'url',normalized:u.href,domain,hostname:u.hostname.toLowerCase(),valid:true,label:'URL'};
+    }catch{return {type:'unknown',normalized:original,valid:false,label:'Invalid URL'};}
+  }
+
+  const email=/^[^\s@]+@([^\s@]+\.[^\s@]+)$/.exec(original);
+  if(email) return {type:'email',normalized:original.toLowerCase(),domain:email[1].toLowerCase(),valid:true,label:'Email · domain + public pivots'};
+
   const ipv4=/^(25[0-5]|2[0-4]\d|1?\d?\d)(\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}$/;
-  if(ipv4.test(value)) return {type:'ip',ipVersion:4,normalized:value,valid:true,label:'IPv4'};
-  if(value.includes(':') && /^[0-9a-fA-F:]+$/.test(value) && value.split(':').length>=3) return {type:'ip',ipVersion:6,normalized:value.toLowerCase(),valid:true,label:'IPv6'};
-  const phoneDigits=value.replace(/[^0-9]/g,'');
-  if(/^\+?[0-9().\-\s]{7,20}$/.test(value) && phoneDigits.length>=7 && phoneDigits.length<=15) return {type:'phone',normalized:`+${phoneDigits}`,valid:true,label:'Phone · provider unconfigured'};
-  const domain=value.toLowerCase().replace(/^www\./,'');
-  if(/^(?=.{3,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(domain)) return {type:'domain',normalized:domain,domain,valid:true,label:'Domain'};
-  let handle=value.replace(/^@/,'').trim();
-  if(/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/.test(handle)) return {type:'username',normalized:handle,valid:true,label:'Username'};
-  return {type:'unknown',normalized:value,valid:false,label:'Unrecognized'};
+  if(ipv4.test(original)) return {type:'ip',ipVersion:4,normalized:original,valid:true,label:'IPv4'};
+  if(original.includes(':') && /^[0-9a-fA-F:]+$/.test(original) && original.split(':').length>=3) return {type:'ip',ipVersion:6,normalized:original.toLowerCase(),valid:true,label:'IPv6'};
+
+  if(/^[a-fA-F0-9]{32}$/.test(original)) return {type:'hash',hashType:'MD5',normalized:original.toLowerCase(),valid:true,label:'MD5 hash'};
+  if(/^[a-fA-F0-9]{40}$/.test(original)) return {type:'hash',hashType:'SHA-1',normalized:original.toLowerCase(),valid:true,label:'SHA-1 hash'};
+  if(/^[a-fA-F0-9]{64}$/.test(original)) return {type:'hash',hashType:'SHA-256',normalized:original.toLowerCase(),valid:true,label:'SHA-256 hash'};
+
+  const phoneDigits=original.replace(/[^0-9]/g,'');
+  if(/^\+?[0-9().\-\s]{7,20}$/.test(original) && phoneDigits.length>=7 && phoneDigits.length<=15) return {type:'phone',normalized:`+${phoneDigits}`,valid:true,label:'Phone · public pivots only'};
+
+  const domain=original.toLowerCase().replace(/^www\./,'');
+  if(isDomain(domain)) return {type:'domain',normalized:domain,domain,valid:true,label:'Domain'};
+
+  const handle=original.replace(/^@/,'').trim();
+  if(/^[A-Za-z0-9](?:[A-Za-z0-9_.-]{0,62}[A-Za-z0-9])?$/.test(handle) && !/\s/.test(original)) return {type:'username',normalized:handle,valid:true,label:'Username'};
+
+  if(original.length>=2 && original.length<=160 && !/[<>]/.test(original)){
+    return {type:'keyword',normalized:original.replace(/\s+/g,' ').trim(),valid:true,label:'Research keyword · choose a lane'};
+  }
+
+  return {type:'unknown',normalized:original,valid:false,label:'Unrecognized'};
 }
 
 function timeoutSignal(parentSignal, ms=REQUEST_TIMEOUT){
@@ -85,7 +113,7 @@ async function fetchJson(url,opts={},parentSignal){
   try {
     const r=await fetch(url,{...opts,signal});
     const body=await r.json().catch(()=>null);
-    if(!r.ok) { const e=new Error(body?.message || `${r.status} ${r.statusText}`); e.status=r.status; throw e; }
+    if(!r.ok) { const e=new Error(body?.message || body?.error || `${r.status} ${r.statusText}`); e.status=r.status; throw e; }
     return body;
   } finally { cleanup(); }
 }
@@ -93,4 +121,3 @@ function providerState(id,name,status='idle',extra={}) { return {id,name,status,
 function finding(provider,subject,observation,url,limitation,extra={}){
   return {id:uid('finding'),provider,subject,observation,url,limitation,checkedAt:nowIso(),...extra};
 }
-
