@@ -1,3 +1,20 @@
+function evidenceFingerprint(e={}){
+  const norm=v=>String(v||'').trim().toLowerCase().replace(/\s+/g,' ');
+  return [norm(e.provider),norm(e.subject),norm(e.sourceUrl),norm(e.observation)].join('|');
+}
+function evidenceStrength(e={}){
+  if(e.status==='disputed') return {label:'Disputed',className:'error',rank:0};
+  if(e.status==='inferred') return {label:'Inference',className:'warn',rank:1};
+  if(['registry-api','api','public-log'].includes(e.sourceType)) return {label:'Direct / registry',className:'ok',rank:4};
+  if(e.sourceType==='web-archive') return {label:'Archived context',className:'teal',rank:3};
+  if(e.provenance==='fetched-public-source') return {label:'Fetched source',className:'ok',rank:3};
+  if(e.sourceUrl) return {label:'User-cited source',className:'teal',rank:2};
+  return {label:'User-supplied',className:'warn',rank:1};
+}
+function isDuplicateEvidence(c,candidate){
+  const fp=evidenceFingerprint(candidate);
+  return c.evidence.some(e=>evidenceFingerprint(e)===fp);
+}
 function allFindings(){ return Object.values(state.providers).flatMap(p=>p.findings||[]).filter(f=>!f.failed); }
 function createCase(name){ const c=normalizeCase({id:uid('case'),name:name.trim()||'Untitled case'}); state.cases.unshift(c); state.currentCaseId=c.id; persistCases(); state.view='cases'; state.caseTab='evidence'; render(); toast('Case created. Saved on this device.'); }
 function renameCase(id){ const c=state.cases.find(c=>c.id===id); if(!c)return; const n=prompt('Rename case',c.name); if(n?.trim()){c.name=n.trim();touchCase(c);render();} }
@@ -8,14 +25,16 @@ function saveSelectedFindings(){
   if(!c){ const n=prompt('Create a case name before saving evidence','New investigation'); if(!n) return; c=normalizeCase({id:uid('case'),name:n}); state.cases.unshift(c); state.currentCaseId=c.id; }
   const selected=allFindings().filter(f=>state.selectedFindingIds.has(f.id));
   if(!selected.length){toast('Select at least one fetched finding first.',true);return;}
+  let saved=0,skipped=0;
   for(const f of selected){
-    const ev={id:uid('ev'),title:`${f.provider}: ${f.subject}`,subject:f.subject,observation:f.observation,sourceUrl:f.url,originalFilename:'',sourceEventDate:'',retrievedAt:f.checkedAt||nowIso(),notes:f.limitation||'',tags:[f.provider.toLowerCase()],status:'observed',provenance:'fetched-public-source',provider:f.provider};
-    c.evidence.push(ev);
+    const ev={id:uid('ev'),title:`${f.provider}: ${f.subject}`,subject:f.subject,observation:f.observation,sourceUrl:f.url,originalFilename:'',sourceEventDate:'',retrievedAt:f.checkedAt||nowIso(),notes:f.limitation||'',tags:[String(f.provider||'source').toLowerCase()],status:'observed',provenance:'fetched-public-source',provider:f.provider,sourceType:f.sourceType||'api',raw:f.raw||null};
+    if(isDuplicateEvidence(c,ev)){skipped++;continue;}
+    c.evidence.push(ev);saved++;
     ensureEntity(c,f.subject,'identifier',[ev.id]);
   }
-  touchCase(c); state.selectedFindingIds.clear(); state.view='cases'; state.caseTab='evidence'; render(); toast(`${selected.length} finding${selected.length===1?'':'s'} saved to ${c.name}.`);
-}
-function ensureEntity(c,label,type='entity',evidenceIds=[]){
+  touchCase(c); state.selectedFindingIds.clear(); state.view='cases'; state.caseTab='evidence'; render();
+  toast(`${saved} finding${saved===1?'':'s'} saved${skipped?`; ${skipped} duplicate${skipped===1?'':'s'} skipped`:''} to ${c.name}.`);
+}function ensureEntity(c,label,type='entity',evidenceIds=[]){
   const key=label.trim().toLowerCase(); let e=c.entities.find(x=>x.label.trim().toLowerCase()===key);
   if(!e){e={id:uid('ent'),label:label.trim(),type,evidenceIds:[...new Set(evidenceIds)]};c.entities.push(e);} else e.evidenceIds=[...new Set([...(e.evidenceIds||[]),...evidenceIds])]; return e;
 }
@@ -27,10 +46,10 @@ function addManualEvidence(form){
   if(!title||!subject||!observation) return toast('Title, subject, and observation are required.',true);
   if(!sourceUrl&&!originalFilename) return toast('Provide either an HTTPS source URL or an original filename.',true);
   if(sourceUrl && !/^https:\/\//i.test(sourceUrl)) return toast('Source URL must use HTTPS.',true);
-  const ev={id:uid('ev'),title,subject,observation,sourceUrl,originalFilename,sourceEventDate:String(fd.get('sourceEventDate')||''),retrievedAt:nowIso(),notes:String(fd.get('notes')||''),tags:String(fd.get('tags')||'').split(',').map(x=>x.trim()).filter(Boolean),status:String(fd.get('status')||'observed'),provenance:'manual-user-supplied',provider:'Manual'};
+  const ev={id:uid('ev'),title,subject,observation,sourceUrl,originalFilename,sourceEventDate:String(fd.get('sourceEventDate')||''),retrievedAt:nowIso(),notes:String(fd.get('notes')||''),tags:String(fd.get('tags')||'').split(',').map(x=>x.trim()).filter(Boolean),status:String(fd.get('status')||'observed'),provenance:'manual-user-supplied',provider:'Manual',sourceType:sourceUrl?'manual-citation':'local-file'};
+  if(isDuplicateEvidence(c,ev)) return toast('That evidence already exists in this case.',true);
   c.evidence.push(ev); ensureEntity(c,subject,'entity',[ev.id]); touchCase(c); form.reset(); render(); toast('Evidence saved on this device.');
-}
-function deleteEvidence(id){ const c=currentCase(); if(!c)return; if(!confirm('Delete this evidence item?'))return; c.evidence=c.evidence.filter(e=>e.id!==id); c.relations.forEach(r=>r.evidenceIds=(r.evidenceIds||[]).filter(x=>x!==id)); c.entities.forEach(e=>e.evidenceIds=(e.evidenceIds||[]).filter(x=>x!==id)); c.questions.forEach(q=>q.evidenceIds=(q.evidenceIds||[]).filter(x=>x!==id)); touchCase(c);render(); }
+}function deleteEvidence(id){ const c=currentCase(); if(!c)return; if(!confirm('Delete this evidence item?'))return; c.evidence=c.evidence.filter(e=>e.id!==id); c.relations.forEach(r=>r.evidenceIds=(r.evidenceIds||[]).filter(x=>x!==id)); c.entities.forEach(e=>e.evidenceIds=(e.evidenceIds||[]).filter(x=>x!==id)); c.questions.forEach(q=>q.evidenceIds=(q.evidenceIds||[]).filter(x=>x!==id)); touchCase(c);render(); }
 
 function addEntity(form){ const c=currentCase(); if(!c)return; const fd=new FormData(form), label=String(fd.get('label')||'').trim(); if(!label)return; ensureEntity(c,label,String(fd.get('type')||'entity'),[]); touchCase(c);form.reset();render(); }
 function addRelation(form){
@@ -50,10 +69,10 @@ function gapSuggestions(c){
   const weakSource=c.evidence.filter(e=>!e.sourceUrl&&!e.originalFilename); if(weakSource.length) gaps.push(`${weakSource.length} evidence item${weakSource.length===1?'':'s'} lack a source URL or original filename.`);
   const unsupported=c.relations.filter(r=>r.mode==='hypothesis' && !(r.evidenceIds||[]).length); if(unsupported.length) gaps.push(`${unsupported.length} hypothesis relationship${unsupported.length===1?'':'s'} have no supporting evidence linked.`);
   const openContr=c.questions.filter(q=>q.type==='contradiction'&&!q.resolved); if(openContr.length) gaps.push(`${openContr.length} contradiction${openContr.length===1?' remains':'s remain'} unresolved.`);
+  const inferred=c.evidence.filter(e=>e.status==='inferred'); if(inferred.length) gaps.push(`${inferred.length} evidence item${inferred.length===1?' is':'s are'} marked inferred and should be corroborated before being treated as established.`);
+  const providers=new Set(c.evidence.map(e=>e.provider||e.provenance).filter(Boolean)); if(c.evidence.length>=3&&providers.size<2) gaps.push('The case currently depends on one source/provider family; add an independent source before relying on consequential claims.');
   return gaps;
-}
-
-function validateCase(obj){
+}function validateCase(obj){
   if(!obj||typeof obj!=='object') throw new Error('JSON must contain an object.');
   if(Number(obj.schemaVersion)!==SCHEMA_VERSION) throw new Error(`Unsupported schemaVersion. Expected ${SCHEMA_VERSION}.`);
   if(!obj.id||!obj.name) throw new Error('Case id and name are required.');
