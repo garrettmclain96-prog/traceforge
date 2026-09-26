@@ -81,7 +81,7 @@ const SOURCE_CATALOG = [
   {
     id:'wayback', name:'Internet Archive Wayback Machine', category:'Archives',
     inputs:['url','domain'], outputs:['historical snapshots'],
-    access:['Browser'], pricing:'Free', mode:'manual',
+    access:['Browser','API'], pricing:'Free', mode:'integrated',
     url:'https://web.archive.org/', checked:'2026-09-25',
     bestFor:'Historical versions of public web pages.',
     limit:'Coverage is incomplete and capture dates are not the same as publication dates.'
@@ -121,7 +121,7 @@ const SOURCE_CATALOG = [
   {
     id:'crtsh', name:'crt.sh', category:'Domain / DNS',
     inputs:['domain'], outputs:['certificate transparency names'],
-    access:['Browser'], pricing:'Free', mode:'manual',
+    access:['Browser','API'], pricing:'Free', mode:'integrated',
     url:'https://crt.sh/', checked:'2026-09-25',
     bestFor:'Finding certificate-transparency names related to a domain.',
     limit:'Certificate names can be stale, shared, or unrelated to a currently active host.'
@@ -280,6 +280,126 @@ const SOURCE_CATALOG = [
     url:'https://www.shodan.io/', checked:'2026-05-27',
     bestFor:'First-pass public-internet exposure review for scoped hosts and organizations.',
     limit:'Exposure data can be stale; use only for lawful, authorized security or infrastructure research.'
+  }
+  {
+    id:'maltego', name:'Maltego', category:'Mapping',
+    inputs:['person','company','organization','domain','ip','email','username'], outputs:['entity graph','transform results'],
+    access:['Desktop','SaaS'], pricing:'Paid / community options', mode:'manual',
+    url:'https://www.maltego.com/', checked:'2026-05-07',
+    bestFor:'Graph-led link analysis across already-scoped entities and infrastructure.',
+    limit:'Transforms vary by provider. A graph edge is a research lead unless the underlying source independently supports it.'
+  },
+  {
+    id:'epieos', name:'Epieos', category:'People & social',
+    inputs:['email','phone','username'], outputs:['public account clues','enrichment leads'],
+    access:['Browser','SaaS'], pricing:'Freemium', mode:'manual',
+    url:'https://epieos.com/', checked:'2026-05-07',
+    bestFor:'Quick enrichment from thin email, phone, or username leads.',
+    limit:'Enrichment is not identity proof. Corroborate consequential matches with independent public sources.'
+  },
+  {
+    id:'hunter', name:'Hunter', category:'Company research',
+    inputs:['domain','company','email'], outputs:['professional email clues','verification signals'],
+    access:['Browser','API','SaaS'], pricing:'Freemium', mode:'manual',
+    url:'https://hunter.io/', checked:'2026-08-09',
+    bestFor:'Company-linked professional email discovery and domain-level contact research.',
+    limit:'A discovered address or employment clue does not by itself establish current employment, identity, or permission to contact.'
+  },
+  {
+    id:'opencorporates', name:'OpenCorporates', category:'Company research',
+    inputs:['company','organization','person','keyword'], outputs:['registry company records','officer leads'],
+    access:['Browser','API'], pricing:'Freemium', mode:'manual',
+    url:'https://opencorporates.com/', checked:'2026-09-25',
+    bestFor:'Cross-jurisdiction company registry discovery and officer/company pivots.',
+    limit:'Registry coverage and freshness vary by jurisdiction; verify important facts with the originating registry.'
+  },
+  {
+    id:'securitytrails', name:'SecurityTrails', category:'Domain / DNS',
+    inputs:['domain','ip'], outputs:['DNS history','subdomains','infrastructure context'],
+    access:['Browser','API','SaaS'], pricing:'Paid', mode:'manual',
+    url:'https://securitytrails.com/', checked:'2026-05-27',
+    bestFor:'Historical DNS and infrastructure context around domains already in scope.',
+    limit:'Historical association does not prove current control, ownership, or operational use.'
+  },
+  {
+    id:'virustotal', name:'VirusTotal', category:'Threat triage',
+    inputs:['hash','url','domain','ip'], outputs:['multi-engine reputation','public analysis context'],
+    access:['Browser','API','SaaS'], pricing:'Freemium', mode:'manual',
+    url:'https://www.virustotal.com/', checked:'2026-09-25',
+    bestFor:'Public reputation and analysis context for scoped hashes, URLs, domains, and IPs.',
+    limit:'Vendor detections can disagree or be wrong. Treat them as signals requiring context, not automatic verdicts.'
+  },
+  {
+    id:'tineye', name:'TinEye', category:'Media verification',
+    inputs:['image'], outputs:['reverse-image matches','reuse history'],
+    access:['Browser','API'], pricing:'Freemium', mode:'manual',
+    url:'https://tineye.com/', checked:'2026-05-21',
+    bestFor:'Finding earlier or reused copies of an image during visual verification.',
+    limit:'No match does not prove originality; coverage is incomplete and visually edited copies may be missed.'
+  },
+  {
+    id:'invid', name:'InVID Verification Toolkit', category:'Media verification',
+    inputs:['image','video','url'], outputs:['keyframes','verification helpers'],
+    access:['Browser extension'], pricing:'Free', mode:'manual',
+    url:'https://www.invid-project.eu/tools-and-services/invid-verification-plugin/', checked:'2026-09-25',
+    bestFor:'Breaking video into keyframes and coordinating visual verification workflows.',
+    limit:'Toolkit outputs still require human source verification and contextual judgment.'
+  },
+  {
+    id:'exiftool', name:'ExifTool', category:'Documents',
+    inputs:['image','document','media'], outputs:['embedded metadata'],
+    access:['Desktop','Self-hosted'], pricing:'Free', mode:'candidate',
+    url:'https://exiftool.org/', checked:'2026-09-25',
+    bestFor:'Extracting metadata from original or preserved files under your control.',
+    limit:'Metadata may be stripped, altered, inherited from templates, or intentionally falsified.'
+  },
+  {
+    id:'factcheck-explorer', name:'Google Fact Check Explorer', category:'Verification',
+    inputs:['keyword','person','company','organization'], outputs:['published fact-check leads'],
+    access:['Browser'], pricing:'Free', mode:'manual',
+    url:'https://toolbox.google.com/factcheck/explorer', checked:'2026-09-25',
+    bestFor:'Finding published fact checks about a claim, person, organization, or topic.',
+    limit:'Absence of a fact check says nothing about whether a claim is true or false.'
+  },
+  {
+    id:'perma', name:'Perma.cc', category:'Archives',
+    inputs:['url'], outputs:['durable citation archive'],
+    access:['Browser'], pricing:'Freemium', mode:'manual',
+    url:'https://perma.cc/', checked:'2026-09-25',
+    bestFor:'Creating durable citations for public web evidence when long-term reference matters.',
+    limit:'Preservation is a snapshot of what was captured, not independent validation of the page’s claims.'
+  },
+  {
+    id:'archive-today', name:'Archive.today', category:'Archives',
+    inputs:['url','domain'], outputs:['alternate web snapshot'],
+    access:['Browser'], pricing:'Free', mode:'manual',
+    url:'https://archive.ph/', checked:'2026-09-25',
+    bestFor:'Alternate preservation when another archive has no usable snapshot.',
+    limit:'Coverage, availability, and operator transparency differ from institutional archives; preserve provenance carefully.'
+  },
+  {
+    id:'courtlistener', name:'CourtListener', category:'Public records',
+    inputs:['person','company','organization','keyword'], outputs:['U.S. court opinions','docket leads'],
+    access:['Browser','API'], pricing:'Free', mode:'manual',
+    url:'https://www.courtlistener.com/', checked:'2026-09-25',
+    bestFor:'Searching U.S. federal and state court opinions and available docket material.',
+    limit:'Coverage is not universal. A name match in litigation does not establish that two same-named people are the same person.'
+  },
+  {
+    id:'opensanctions', name:'OpenSanctions', category:'Due diligence',
+    inputs:['person','company','organization','keyword'], outputs:['sanctions/PEP/entity leads'],
+    access:['Browser','API'], pricing:'Freemium', mode:'manual',
+    url:'https://www.opensanctions.org/', checked:'2026-09-25',
+    bestFor:'Entity-resolution leads involving sanctions, politically exposed persons, and related public datasets.',
+    limit:'Screening matches can be false positives. Confirm identity and consult the original authority before consequential use.'
+  },
+  {
+    id:'bellingcat-toolkit', name:'Bellingcat Online Investigation Toolkit', category:'Workflow',
+    inputs:['keyword','person','company','organization','location','url'], outputs:['curated investigation pivots'],
+    access:['Browser'], pricing:'Free', mode:'manual',
+    url:'https://bellingcat.gitbook.io/toolkit', checked:'2026-09-25',
+    bestFor:'Expanding a research plan when the next source category is unclear.',
+    limit:'A toolkit organizes possible sources; it does not verify results on your behalf.'
   }
 ];
 
