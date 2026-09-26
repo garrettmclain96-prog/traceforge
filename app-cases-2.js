@@ -60,6 +60,6 @@ function commitEvidenceImport(){
   }
   state.importPreview=null;touchCase(c);render();toast(`${saved} imported evidence item${saved===1?'':'s'} saved${skipped?`; ${skipped} duplicate${skipped===1?'':'s'} skipped`:''}.`);
 }
-function clearSession(){ if(state.activeController)state.activeController.abort();state.query='';state.queryMeta=null;state.providers={};state.selectedFindingIds.clear();render();toast('Search session cleared. Saved cases were not changed.'); }
+function clearSession(){ if(state.activeController)state.activeController.abort();state.query='';state.queryMeta=null;state.researchLane='auto';state.providers={};state.selectedFindingIds.clear();render();toast('Search session cleared. Saved cases were not changed.'); }
 function deleteAllLocal(){ if(!confirm('Delete ALL TraceForge cases saved on this device? This cannot be undone.'))return;if(!confirm('Final confirmation: permanently delete all local TraceForge data?'))return;localStorage.removeItem(APP_KEY);localStorage.removeItem('traceforge.currentCaseId');state.cases=[];state.currentCaseId=null;state.view='cases';render();toast('All local TraceForge data deleted.'); }
 
