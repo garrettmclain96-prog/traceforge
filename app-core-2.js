@@ -130,33 +130,72 @@ async function runRdapIp(meta,signal){
   render();
 }
 
+
+function archiveStamp(ts=''){
+  if(!/^\d{14}$/.test(ts))return ts||'unknown';
+  return `${ts.slice(0,4)}-${ts.slice(4,6)}-${ts.slice(6,8)} ${ts.slice(8,10)}:${ts.slice(10,12)} UTC`;
+}
+async function runDomainHistory(meta,signal){
+  const domain=meta.domain||meta.normalized;
+  const p=providerState('history','Domain history','loading');state.providers.history=p;render();
+  try{
+    const data=await fetchJson(`/api/intel?kind=domain-history&domain=${encodeURIComponent(domain)}`,{},signal);
+    const findings=[];
+    const ct=data?.certificateTransparency;
+    if(ct?.ok){
+      const names=Array.isArray(ct.names)?ct.names:[];
+      const sample=names.slice(0,14);
+      const obs=names.length
+        ? `Certificate Transparency returned ${ct.rowCount||names.length} record rows and ${names.length} unique domain/hostname names in the processed sample. ${sample.length?`Sample: ${sample.join(' · ')}${names.length>sample.length?' …':''}.`:''}`
+        : 'Certificate Transparency returned no domain/hostname names in the processed response.';
+      findings.push(finding('crt.sh',domain,obs,ct.source||`https://crt.sh/?q=%25.${domain}`,'Certificate logs are historical naming evidence. Expired, wildcard, shared, or old certificates do not prove a hostname is live or currently controlled by the subject.',{sourceType:'public-log',raw:{rowCount:ct.rowCount,names,earliest:ct.earliest,latest:ct.latest}}));
+    }
+    const wb=data?.wayback;
+    if(wb?.ok){
+      const captures=Array.isArray(wb.captures)?wb.captures:[];
+      if(captures.length){
+        const first=captures[0],last=captures[captures.length-1];
+        findings.push(finding('Wayback Machine',domain,`Returned ${captures.length} unique successful HTML captures in the sampled archive response, spanning ${archiveStamp(first.timestamp)} to ${archiveStamp(last.timestamp)}.`,wb.source||`https://web.archive.org/web/*/${domain}/*`,'Archive coverage is incomplete. Capture time is not publication time, and archived content may differ from the live site.',{sourceType:'web-archive',raw:{captures}}));
+      }
+    }
+    p.findings=findings;
+    const errors=[ct&&!ct.ok?ct.error:'',wb&&!wb.ok?wb.error:''].filter(Boolean);
+    p.status=findings.length?'success':(errors.length?'error':'no-match');
+    if(errors.length)p.error=errors.join(' · ');
+  }catch(e){if(signal.aborted)return;p.status=e.name==='TimeoutError'?'timeout':'error';p.error=e.message;}
+  render();
+}
+
+function domainLike(meta){return ['domain','email','url'].includes(meta.type) && !!meta.domain;}
 async function runSearch(raw){
   if(state.activeController) state.activeController.abort();
   state.providers={}; state.selectedFindingIds.clear();
   state.query=raw.trim(); state.queryMeta=detectIdentifier(raw);
   const meta=state.queryMeta;
-  if(!meta.valid){render();if(raw.trim())toast('That identifier format is not recognized.',true);return;}
+  if(!meta.valid){render();if(raw.trim())toast('That input format is not recognized.',true);return;}
   state.activeController=new AbortController(); const sig=state.activeController.signal;
   if(meta.type==='username'){
     state.providers.github=providerState('github','GitHub','idle');
     state.providers.gitlab=providerState('gitlab','GitLab','idle');
   }
-  if(meta.type==='domain'||meta.type==='email'){
+  if(domainLike(meta)){
     state.providers.dns=providerState('dns','DNS','idle');
     state.providers.rdap=providerState('rdap','RDAP domain','idle');
-    if(meta.type==='email') state.providers.hibp=providerState('hibp','Breach coverage','unsupported',{note:'Breach-provider access is not configured in this client build. No breach conclusion is made.'});
+    state.providers.history=providerState('history','Domain history','idle');
+    if(meta.type==='email') state.providers.hibp=providerState('hibp','Breach coverage','unsupported',{note:'Breach-provider access is not configured. No breach conclusion is made.'});
   }
   if(meta.type==='ip'){
     state.providers.ripe=providerState('ripe','RIPEstat','idle');
     state.providers.rdapip=providerState('rdapip','RDAP IP','idle');
   }
-  if(meta.type==='phone') state.providers.phone=providerState('phone','Phone ownership','unsupported',{note:'Owner lookup is intentionally unavailable until a vetted provider is configured. The number is normalized only.'});
+  if(meta.type==='phone') state.providers.phone=providerState('phone','Phone ownership','unsupported',{note:'Automatic owner attribution is intentionally not performed. Use vetted public pivots and verify identity separately.'});
+  if(meta.type==='hash') state.providers.hash=providerState('hash','Hash reputation','unsupported',{note:'No reputation provider is configured in this client build. Use the public threat-triage pivots shown below.'});
+  if(meta.type==='keyword') state.providers.research=providerState('research','Research lane','unsupported',{note:'Choose person, company, organization, or general research below. TraceForge will route you to relevant public sources without pretending a keyword is an identifier.'});
   render();
   const jobs=[];
-  if(meta.type==='username'){jobs.push(runGithub(meta,sig),runGitlab(meta,sig));}
-  if(meta.type==='domain'||meta.type==='email'){jobs.push(runDns(meta,sig),runRdapDomain(meta,sig));}
-  if(meta.type==='ip'){jobs.push(runRipe(meta,sig),runRdapIp(meta,sig));}
-  if(meta.type==='phone') toast('Phone lookup is not configured; formatting only.');
+  if(meta.type==='username')jobs.push(runGithub(meta,sig),runGitlab(meta,sig));
+  if(domainLike(meta))jobs.push(runDns(meta,sig),runRdapDomain(meta,sig),runDomainHistory(meta,sig));
+  if(meta.type==='ip')jobs.push(runRipe(meta,sig),runRdapIp(meta,sig));
   await Promise.allSettled(jobs);
 }
 function retryProvider(id){
@@ -166,6 +205,7 @@ function retryProvider(id){
   if(id==='gitlab')runGitlab(m,sig);
   if(id==='dns')runDns(m,sig);
   if(id==='rdap')runRdapDomain(m,sig);
+  if(id==='history')runDomainHistory(m,sig);
   if(id==='ripe')runRipe(m,sig);
   if(id==='rdapip')runRdapIp(m,sig);
 }
