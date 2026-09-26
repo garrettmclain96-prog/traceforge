@@ -414,25 +414,29 @@ function catalogModeBadge(mode){
 }
 function catalogInputForCurrentQuery(){
   const t=state.queryMeta?.type;
-  if(t==='email'||t==='username'||t==='domain'||t==='ip'||t==='phone') return t;
+  if(t==='keyword') return state.researchLane&&state.researchLane!=='auto' ? state.researchLane : 'keyword';
+  if(['email','username','domain','ip','phone','url','hash'].includes(t)) return t;
   return null;
-}
-function buildCatalogUrl(source){
+}function buildCatalogUrl(source){
   const meta=state.queryMeta;
   if(!meta?.valid) return source.url;
   const v=encodeURIComponent(meta.normalized);
   const domain=encodeURIComponent(meta.domain || meta.normalized);
   if(source.id==='github' && meta.type==='username') return `https://github.com/${v}`;
   if(source.id==='gitlab' && meta.type==='username') return `https://gitlab.com/${v}`;
-  if(source.id==='rdap-domain' && ['domain','email'].includes(meta.type)) return `https://rdap.org/domain/${domain}`;
+  if(source.id==='rdap-domain' && ['domain','email','url'].includes(meta.type)) return `https://rdap.org/domain/${domain}`;
   if(source.id==='rdap-ip' && meta.type==='ip') return `https://rdap.org/ip/${v}`;
-  if(source.id==='dns' && ['domain','email'].includes(meta.type)) return `https://dns.google/query?name=${domain}`;
-  if(source.id==='crtsh' && meta.type==='domain') return `https://crt.sh/?q=%25.${domain}`;
-  if(source.id==='urlscan' && meta.type==='domain') return `https://urlscan.io/search/#domain:${domain}`;
-  if(source.id==='wayback' && meta.type==='domain') return `https://web.archive.org/web/*/${domain}/*`;
+  if(source.id==='dns' && ['domain','email','url'].includes(meta.type)) return `https://dns.google/query?name=${domain}`;
+  if(source.id==='crtsh' && ['domain','email','url'].includes(meta.type)) return `https://crt.sh/?q=%25.${domain}`;
+  if(source.id==='urlscan' && ['domain','url'].includes(meta.type)) return meta.type==='url' ? `https://urlscan.io/search/#page.url:${v}` : `https://urlscan.io/search/#domain:${domain}`;
+  if(source.id==='wayback' && ['domain','url'].includes(meta.type)) return meta.type==='url' ? `https://web.archive.org/web/*/${meta.normalized}` : `https://web.archive.org/web/*/${domain}/*`;
+  if(source.id==='virustotal' && ['hash','url','domain','ip'].includes(meta.type)) return `https://www.virustotal.com/gui/search/${v}`;
+  if(source.id==='opencorporates' && meta.type==='keyword') return `https://opencorporates.com/companies?q=${v}`;
+  if(source.id==='courtlistener' && meta.type==='keyword') return `https://www.courtlistener.com/?q=${v}`;
+  if(source.id==='opensanctions' && meta.type==='keyword') return `https://www.opensanctions.org/search/?q=${v}`;
+  if(source.id==='factcheck-explorer' && meta.type==='keyword') return `https://toolbox.google.com/factcheck/explorer/search/${v}?hl=en`;
   return source.url;
-}
-function sourceMatchesQuery(source, query, filter){
+}function sourceMatchesQuery(source, query, filter){
   if(filter!=='all' && !source.inputs.includes(filter) && source.mode!==filter && source.category!==filter) return false;
   if(!query) return true;
   const hay=[source.name,source.category,source.bestFor,source.limit,source.inputs.join(' '),source.outputs.join(' '),source.access.join(' '),source.pricing,catalogModeLabel(source.mode)].join(' ').toLowerCase();
