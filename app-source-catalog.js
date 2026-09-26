@@ -240,6 +240,46 @@ const SOURCE_CATALOG = [
     url:'https://github.com/mxrch/GHunt', checked:'2026-09-19',
     bestFor:'Authorized review of public Google-account signals.',
     limit:'Use only for accounts you own or are authorized to investigate; results are leads, not identity proof.'
+  },
+  {
+    id:'spiderfoot', name:'SpiderFoot', category:'Automation',
+    inputs:['domain','ip','email','username','company'], outputs:['public-source leads','enrichment results'],
+    access:['Self-hosted'], pricing:'Freemium', mode:'candidate',
+    url:'https://www.spiderfoot.net/', checked:'2026-05-07',
+    bestFor:'Broad first-pass enrichment around a clearly scoped, authorized lead.',
+    limit:'Automation can create noisy or stale leads; consequential relationships still require manual verification.'
+  },
+  {
+    id:'maigret', name:'Maigret', category:'People & social',
+    inputs:['username'], outputs:['public account leads','report'],
+    access:['Desktop','Self-hosted'], pricing:'Free', mode:'candidate',
+    url:'https://github.com/soxoj/maigret', checked:'2026-05-27',
+    bestFor:'Broad public username discovery and exportable lead generation.',
+    limit:'A username match is a lead only; shared handles and false positives require corroboration.'
+  },
+  {
+    id:'sherlock', name:'Sherlock', category:'People & social',
+    inputs:['username'], outputs:['public account leads'],
+    access:['Desktop','Self-hosted'], pricing:'Free', mode:'candidate',
+    url:'https://github.com/sherlock-project/sherlock', checked:'2026-05-27',
+    bestFor:'Checking a distinctive username across public services.',
+    limit:'Site responses can change and a handle match does not establish common ownership.'
+  },
+  {
+    id:'whatsmyname', name:'WhatsMyName', category:'People & social',
+    inputs:['username'], outputs:['public account leads'],
+    access:['Desktop','Self-hosted'], pricing:'Free', mode:'manual',
+    url:'https://github.com/WebBreacher/WhatsMyName', checked:'2026-05-07',
+    bestFor:'Reviewing public username leads across a broad service list.',
+    limit:'Treat matches as leads and verify them against profile content or another independent source.'
+  },
+  {
+    id:'shodan', name:'Shodan', category:'Infrastructure',
+    inputs:['ip','domain'], outputs:['public service exposure','banners','technology clues'],
+    access:['SaaS','Browser'], pricing:'Freemium', mode:'manual',
+    url:'https://www.shodan.io/', checked:'2026-05-27',
+    bestFor:'First-pass public-internet exposure review for scoped hosts and organizations.',
+    limit:'Exposure data can be stale; use only for lawful, authorized security or infrastructure research.'
   }
 ];
 
@@ -304,13 +344,16 @@ function catalogCard(source, compact=false){
 function suggestedCatalogSources(){
   const input=catalogInputForCurrentQuery();
   if(!input) return [];
-  return SOURCE_CATALOG
-    .filter(s=>s.inputs.includes(input) && s.mode!=='integrated')
-    .sort((a,b)=>{
-      const rank={candidate:0,manual:1};
-      return (rank[a.mode]??9)-(rank[b.mode]??9) || a.name.localeCompare(b.name);
-    })
-    .slice(0,6);
+  const preferred={
+    username:['maigret','sherlock','whatsmyname','spiderfoot'],
+    email:['ghunt','spiderfoot'],
+    domain:['crtsh','wayback','amass','urlscan','firecrawl','archivebox'],
+    ip:['shodan','intelowl','spiderfoot','opencti','misp']
+  };
+  const ids=preferred[input]||[];
+  const picked=ids.map(id=>SOURCE_CATALOG.find(s=>s.id===id)).filter(Boolean);
+  if(picked.length) return picked.slice(0,6);
+  return SOURCE_CATALOG.filter(s=>s.inputs.includes(input) && s.mode!=='integrated').slice(0,6);
 }
 
 const __traceforgeInvestigateViewWithCatalogBase = investigateView;
