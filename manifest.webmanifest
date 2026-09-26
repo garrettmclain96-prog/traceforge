@@ -1,13 +1,18 @@
 {
   "name": "TraceForge",
   "short_name": "TraceForge",
-  "description": "Evidence-led public-source research workspace by McLain Systems.",
+  "description": "Evidence-first public-source investigation, verification, recovery, and case workspace by McLain Systems.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "background_color": "#071019",
   "theme_color": "#071019",
   "icons": [
-    {"src":"./icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
   ]
 }
