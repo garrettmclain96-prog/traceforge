@@ -14,6 +14,18 @@ Start with one identifier and route it only to applicable public sources:
 
 Each fetched finding keeps a provider, source URL, check time, observation, and limitation. Provider failures and unavailable coverage remain visible instead of being converted into conclusions.
 
+## Source orchestrator
+
+The **Coverage** screen is now a structured source catalog rather than a static provider table. It separates:
+
+- **Integrated now** — sources TraceForge actually fetches and can preserve as source-backed findings.
+- **Integration candidates** — API or self-hosted tools that are useful next additions but are not silently treated as live coverage.
+- **Manual pivots** — review-first external sources that never become evidence until a researcher verifies and saves the provenance.
+
+When a valid identifier is active, TraceForge suggests relevant follow-on pivots for that identifier. The catalog is intentionally a maintained shortlist, not a mirror of any third-party directory. It is informed by current OSINT4ALL research and primary tool sites, with per-tool scope and limitation notes.
+
+The orchestration layer deliberately excludes credential dumps, session tokens, stealer logs, covert tracking, and automatic person attribution from shared identifiers.
+
 ## Recovery & rights
 
 TraceForge v3 adds a dedicated recovery sweep:
