@@ -280,7 +280,7 @@ const SOURCE_CATALOG = [
     url:'https://www.shodan.io/', checked:'2026-05-27',
     bestFor:'First-pass public-internet exposure review for scoped hosts and organizations.',
     limit:'Exposure data can be stale; use only for lawful, authorized security or infrastructure research.'
-  }
+  },
   {
     id:'maltego', name:'Maltego', category:'Mapping',
     inputs:['person','company','organization','domain','ip','email','username'], outputs:['entity graph','transform results'],
