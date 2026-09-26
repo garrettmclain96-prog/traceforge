@@ -12,8 +12,10 @@ function wire(){
   document.querySelectorAll('[data-rename-case]').forEach(b=>b.onclick=()=>renameCase(b.dataset.renameCase));
   document.querySelectorAll('[data-delete-case]').forEach(b=>b.onclick=()=>deleteCase(b.dataset.deleteCase));
   document.querySelectorAll('[data-case-tab]').forEach(b=>b.onclick=()=>{state.caseTab=b.dataset.caseTab;render();});
-  document.querySelector('[data-export-case]')?.addEventListener('click',()=>exportCase());
-  document.querySelector('[data-print]')?.addEventListener('click',()=>printReport());
+  document.querySelectorAll('[data-export-case]').forEach(b=>b.addEventListener('click',()=>exportCase()));
+  document.querySelectorAll('[data-export-md]').forEach(b=>b.addEventListener('click',()=>exportCaseMarkdown()));
+  document.querySelectorAll('[data-export-csv]').forEach(b=>b.addEventListener('click',()=>exportEvidenceCsv()));
+  document.querySelectorAll('[data-print]').forEach(b=>b.addEventListener('click',()=>printReport()));
   document.querySelector('[data-delete-all]')?.addEventListener('click',deleteAllLocal);
   document.querySelector('[data-import-case]')?.addEventListener('change',e=>importCaseFile(e.target.files?.[0]));
   document.querySelector('#manualEvidence')?.addEventListener('submit',e=>{e.preventDefault();addManualEvidence(e.currentTarget)});

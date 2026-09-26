@@ -1,67 +1,162 @@
-# TraceForge v3
+# TraceForge v4
 
-TraceForge is an evidence-first public-source investigation and recovery workspace by McLain Systems.
+TraceForge is an evidence-first public-source investigation, verification, recovery, and case-management workspace by McLain Systems.
 
-## Investigation
+The product rule is simple: **a source-backed observation may be saved; an unsupported conclusion does not ship as a finding.**
 
-Start with one identifier and route it only to applicable public sources:
+## Investigation console
 
-- **Username:** GitHub + GitLab exact-handle checks
-- **Email / domain:** public DNS plus RDAP domain-registration context
-- **IP address:** RIPEstat routing / ASN context plus RDAP allocation context
-- **Phone:** normalization only until a vetted ownership provider is configured
-- **Breach coverage:** intentionally not claimed until a server-side provider is configured
+TraceForge recognizes and routes:
 
-Each fetched finding keeps a provider, source URL, check time, observation, and limitation. Provider failures and unavailable coverage remain visible instead of being converted into conclusions.
+- **Username** — live GitHub and GitLab exact-handle checks plus broader public-account pivots.
+- **Email** — DNS, mail-routing, domain registration, certificate history, archive context, and review-first enrichment pivots.
+- **Domain** — DNS, RDAP, Certificate Transparency, Wayback history, infrastructure, archive, and exposure pivots.
+- **URL** — preserves the exact URL while separately researching its hostname; adds archive and reputation pivots.
+- **IP address** — RIPEstat routing/origin context and RDAP allocation context.
+- **Phone** — normalization plus vetted public pivots; TraceForge does not automatically claim an owner.
+- **MD5 / SHA-1 / SHA-256** — recognizes the hash type and routes to public threat-triage sources.
+- **Person / company / organization / topic** — deterministic research lanes for broad subjects.
+
+For ambiguous one-word subjects, force a lane with:
+
+```
+person: Jane Example
+company: OpenAI
+org: Example Foundation
+topic: coastal erosion
+```
+
+## Live source-backed providers
+
+Current fetched integrations include:
+
+1. GitHub
+2. GitLab
+3. Cloudflare DNS with Google Public DNS fallback
+4. RDAP domain
+5. RIPEstat
+6. RDAP IP
+7. crt.sh Certificate Transparency
+8. Internet Archive Wayback/CDX history
+
+Domain history is fetched server-side through `/api/intel` so the browser does not need to bypass CORS or expose credentials.
+
+A provider error remains an error. A no-match remains a no-match. Neither is silently converted into a conclusion.
 
 ## Source orchestrator
 
-The **Coverage** screen is now a structured source catalog rather than a static provider table. It separates:
+The **Coverage** workspace contains a curated registry of public-source tools, grouped as:
 
-- **Integrated now** — sources TraceForge actually fetches and can preserve as source-backed findings.
-- **Integration candidates** — API or self-hosted tools that are useful next additions but are not silently treated as live coverage.
-- **Manual pivots** — review-first external sources that never become evidence until a researcher verifies and saves the provenance.
+- **Integrated now** — TraceForge fetches the source itself.
+- **Integration candidate** — useful API/self-hosted systems that are not yet represented as live TraceForge evidence.
+- **Manual pivot** — external review-first sources.
 
-When a valid identifier is active, TraceForge suggests relevant follow-on pivots for that identifier. The catalog is intentionally a maintained shortlist, not a mirror of any third-party directory. It is informed by current OSINT4ALL research and primary tool sites, with per-tool scope and limitation notes.
+The catalog includes 48 structured sources spanning people/social, company research, domains/DNS, infrastructure, archives, threat triage, documents, media verification, maps/geolocation, courts/public records, due diligence, analysis, and workflow tooling.
 
-The orchestration layer deliberately excludes credential dumps, session tokens, stealer logs, covert tracking, and automatic person attribution from shared identifiers.
+The catalog is informed by current OSINT4ALL research and primary tool sites. It is a maintained shortlist, not a mirror, paid ranking, or endorsement.
+
+## Investigation playbooks
+
+Each valid input gets a deterministic next-step workflow. Typical phases are:
+
+1. establish the exact research object
+2. collect direct/registry evidence
+3. expand into historical or adjacent sources
+4. corroborate consequential links independently
+5. preserve reviewed findings into a case
+
+The playbook is guidance, not an AI-generated factual conclusion.
+
+## Evidence model
+
+Every fetched finding keeps:
+
+- provider
+- subject
+- observation
+- source URL
+- checked time
+- source type
+- limitation
+- selected raw source context when useful
+
+When findings are saved, TraceForge prevents exact duplicate evidence from being added again.
+
+Evidence is also labeled with a deterministic source-strength class:
+
+- **Direct / registry**
+- **Archived context**
+- **Fetched source**
+- **User-cited source**
+- **User-supplied**
+- **Inference**
+- **Disputed**
+
+These labels describe provenance/verification posture, not a probability that a claim is true.
+
+## Case workspace
+
+Cases remain device-local by default.
+
+Each case includes:
+
+- **Brief** — evidence count, source diversity, strength mix, entities, relationships, open work, and proof gaps.
+- **Evidence** — fetched and manual evidence ledger.
+- **Connections** — entities, human-reviewed relationships, and a visual relationship map.
+- **Timeline** — uses source-event dates only; retrieval time never substitutes for event time.
+- **Questions** — tasks, questions, contradictions, and deterministic proof-gap suggestions.
+
+Shared identifiers never auto-merge entities.
+
+## Portable outputs
+
+A case can be exported as:
+
+- JSON — complete structured case
+- Markdown — human-readable case brief
+- CSV — spreadsheet-ready evidence ledger
+- Print/PDF — printable report view
+
+Imports remain validated and additive. Duplicate evidence is skipped rather than silently duplicated.
 
 ## Recovery & rights
 
-TraceForge v3 adds a dedicated recovery sweep:
+TraceForge also includes a recovery sweep for:
 
-1. live open class-action settlements
-2. state unclaimed property directory
-3. FTC consumer refunds
-4. Department of Labor Workers Owed Wages
-5. PBGC unclaimed retirement benefits
-6. HUD/FHA mortgage-insurance refunds
-7. SEC Fair Funds and harmed-investor distributions
-8. FDIC failed-bank unclaimed funds
-9. U.S. Courts bankruptcy unclaimed funds
+1. current class-action settlements
+2. open lawsuits/investigations
+3. state unclaimed property
+4. FTC refunds
+5. U.S. Department of Labor Workers Owed Wages
+6. PBGC missing retirement benefits
+7. HUD/FHA mortgage-insurance refunds
+8. SEC investor distributions
+9. FDIC failed-bank unclaimed funds
+10. U.S. Courts bankruptcy unclaimed funds
 
-The class-action feed is refreshed server-side from ClassAction.org and links claimants to the settlement administrator site. Government recovery tools open their official source directly. TraceForge does not collect or store SSNs, DOBs, claim PINs, passwords, or account numbers.
+Recovery discovery is not a determination of eligibility or entitlement.
 
-## Cases
+Sensitive claim data such as SSNs, DOBs, passwords, claim PINs, and account numbers belongs on the official agency/administrator site, not in TraceForge.
 
-Search sessions are ephemeral by default. Selected findings can be saved into local cases with an evidence ledger, entities and human-reviewed relationships, timeline, questions/contradictions, JSON import/export, and printable reports.
+## Privacy and security
 
-Cases are stored in browser localStorage and labeled as device-local.
+- Searches are ephemeral until findings are explicitly saved.
+- Cases are stored in browser localStorage by default.
+- API secrets are not shipped client-side.
+- Service-worker caching excludes `/api/*` responses.
+- Security headers include CSP, frame denial, HSTS, strict referrer handling, and disabled geolocation/camera/microphone permissions.
+- No credential dumps, session tokens, stealer logs, covert tracking, or automatic identity attribution from shared identifiers.
 
-## Product principles
+## PWA / iPhone
 
-1. Source on every fetched finding.
-2. A matching identifier is not automatically an identity match.
-3. Shared identifiers never auto-merge people or entities.
-4. Missing coverage is shown as missing.
-5. Recovery discovery is not a determination of eligibility or entitlement.
-6. Sensitive claim identity data belongs on the official provider website, not TraceForge.
-7. No credential dumps, session tokens, stealer logs, or covert tracking.
+TraceForge is an installable static PWA with Vercel serverless endpoints for live recovery and domain-history enrichment.
 
-## Easter eggs
-
-Four non-functional easter eggs are embedded in the client. They change presentation only and never expose hidden user data or expand data collection.
+The service worker uses network-first navigation, safe asset caching, and never caches API responses as static application assets.
 
 ## Deployment
 
-The repository is a static PWA with a small Vercel serverless recovery feed. No API secrets are shipped client-side. Providers that require protected credentials must be implemented server-side before they can be enabled.
+Production is connected to the GitHub `main` branch through Vercel.
+
+No build command is required for the static client. Serverless functions live under `/api`.
+
+Providers requiring protected credentials should be implemented behind server-side endpoints before being marked **Integrated now**.
