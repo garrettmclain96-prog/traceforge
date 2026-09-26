@@ -581,7 +581,7 @@ function sourcesView(){
   const q=state.sourceCatalogQuery||'';
   const filter=state.sourceCatalogFilter||'all';
   const current=catalogInputForCurrentQuery();
-  const filters=['all','integrated','candidate','manual','username','email','domain','ip','url','company','person','document','location'];
+  const filters=['all','integrated','candidate','manual','username','email','phone','domain','ip','url','hash','person','company','organization','keyword','document','image','location'];
   const rows=SOURCE_CATALOG.filter(s=>sourceMatchesQuery(s,q,filter));
   const integrated=SOURCE_CATALOG.filter(s=>s.mode==='integrated').length;
   const candidates=SOURCE_CATALOG.filter(s=>s.mode==='candidate').length;
@@ -591,22 +591,20 @@ function sourcesView(){
       <input id="sourceCatalogSearch" class="search" value="${esc(q)}" placeholder="tool, task, source type, workflow…" autocomplete="off" spellcheck="false">
       <select id="sourceCatalogFilter" class="input" aria-label="Filter source catalog">${filters.map(f=>`<option value="${esc(f)}" ${filter===f?'selected':''}>${esc(f==='all'?'All sources':f)}</option>`).join('')}</select>
     </div>
-    ${current?`<div class="search-meta"><span class="badge teal">Current identifier: ${esc(current)}</span><button class="search-example" data-catalog-current>Show matching sources</button></div>`:''}
+    ${current?`<div class="search-meta"><span class="badge teal">Current route: ${esc(current)}</span><button class="search-example" data-catalog-current>Show matching sources</button></div>`:''}
   </div></section>
   <section class="section"><div class="stats-row"><div class="stat"><span>Catalog</span><strong>${SOURCE_CATALOG.length}</strong><small>structured sources</small></div><div class="stat"><span>Integrated</span><strong>${integrated}</strong><small>TraceForge fetches now</small></div><div class="stat"><span>Candidates</span><strong>${candidates}</strong><small>API / self-host options</small></div><div class="stat"><span>Manual</span><strong>${manual}</strong><small>review-first pivots</small></div></div></section>
   <section class="section"><div class="section-head"><div><h2>${rows.length} matching source${rows.length===1?'':'s'}</h2><p class="small muted">Manual and candidate sources never silently become evidence. Review first, then preserve what the source actually supports.</p></div></div>
     ${rows.length?`<div class="catalog-grid">${rows.map(s=>catalogCard(s)).join('')}</div>`:`<div class="empty">No source matches that filter.</div>`}
   </section>
-  <section class="section"><div class="card inset"><strong>Catalog provenance</strong><p class="small muted" style="margin-bottom:0">This registry is a TraceForge-maintained shortlist informed by OSINT4ALL’s current directory and primary tool sites. It is not a mirror of OSINT4ALL, and inclusion is not an endorsement. Tool availability, terms, pricing, and capabilities can change.</p></div></section>`;
-}
-
-function wireSourceCatalog(){
+  <section class="section"><div class="card inset"><strong>Catalog provenance</strong><p class="small muted" style="margin-bottom:0">This is a TraceForge-maintained shortlist informed by current OSINT4ALL research and primary tool sites. It is not a mirror, ranking, or endorsement. Capabilities, terms, pricing, and availability can change.</p></div></section>`;
+}function wireSourceCatalog(){
   const input=document.querySelector('#sourceCatalogSearch');
   if(input) input.addEventListener('input',e=>{state.sourceCatalogQuery=e.target.value;render();setTimeout(()=>document.querySelector('#sourceCatalogSearch')?.focus(),0);});
   const filter=document.querySelector('#sourceCatalogFilter');
   if(filter) filter.addEventListener('change',e=>{state.sourceCatalogFilter=e.target.value;render();});
   document.querySelector('[data-catalog-current]')?.addEventListener('click',()=>{const current=catalogInputForCurrentQuery();if(!current)return;state.sourceCatalogFilter=current;render();});
+  document.querySelectorAll('[data-research-lane]').forEach(b=>b.addEventListener('click',()=>{state.researchLane=b.dataset.researchLane||'auto';render();}));
 }
-
 const __traceforgeCatalogRenderBase = render;
 render=function(){__traceforgeCatalogRenderBase();wireSourceCatalog();};
