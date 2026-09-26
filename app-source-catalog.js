@@ -470,16 +470,22 @@ function suggestedCatalogSources(){
   if(!input) return [];
   const preferred={
     username:['maigret','sherlock','whatsmyname','spiderfoot'],
-    email:['ghunt','spiderfoot'],
-    domain:['crtsh','wayback','amass','urlscan','firecrawl','archivebox'],
-    ip:['shodan','intelowl','spiderfoot','opencti','misp']
+    email:['epieos','hunter','ghunt','spiderfoot'],
+    domain:['securitytrails','amass','urlscan','firecrawl','archivebox'],
+    url:['urlscan','virustotal','archive-today','perma','invid'],
+    ip:['shodan','virustotal','intelowl','spiderfoot','opencti','misp'],
+    hash:['virustotal','intelowl','opencti','misp'],
+    phone:['epieos'],
+    person:['littlesis','opensanctions','courtlistener','factcheck-explorer','bellingcat-toolkit'],
+    company:['opencorporates','sec-edgar','hunter','littlesis','opensanctions','courtlistener'],
+    organization:['propublica-nonprofit','opencorporates','sec-edgar','littlesis','opensanctions'],
+    keyword:['factcheck-explorer','bellingcat-toolkit','courtlistener','opencorporates','opensanctions']
   };
   const ids=preferred[input]||[];
   const picked=ids.map(id=>SOURCE_CATALOG.find(s=>s.id===id)).filter(Boolean);
   if(picked.length) return picked.slice(0,6);
   return SOURCE_CATALOG.filter(s=>s.inputs.includes(input) && s.mode!=='integrated').slice(0,6);
 }
-
 const __traceforgeInvestigateViewWithCatalogBase = investigateView;
 investigateView=function(){
   const base=__traceforgeInvestigateViewWithCatalogBase();
