@@ -13,6 +13,8 @@ function wire(){
   document.querySelectorAll('[data-delete-case]').forEach(b=>b.onclick=()=>deleteCase(b.dataset.deleteCase));
   document.querySelectorAll('[data-case-tab]').forEach(b=>b.onclick=()=>{state.caseTab=b.dataset.caseTab;render();});
   document.querySelector('[data-export-case]')?.addEventListener('click',()=>exportCase());
+  document.querySelector('[data-export-md]')?.addEventListener('click',()=>exportCaseMarkdown());
+  document.querySelector('[data-export-csv]')?.addEventListener('click',()=>exportEvidenceCsv());
   document.querySelector('[data-print]')?.addEventListener('click',()=>printReport());
   document.querySelector('[data-delete-all]')?.addEventListener('click',deleteAllLocal);
   document.querySelector('[data-import-case]')?.addEventListener('change',e=>importCaseFile(e.target.files?.[0]));
